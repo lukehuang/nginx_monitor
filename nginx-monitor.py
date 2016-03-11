@@ -8,6 +8,7 @@ import json
 import socket
 import time
 import commands
+import requests
 
 GAUGE = 'GAUGE'
 COUNTER = 'COUNTER'
@@ -110,15 +111,12 @@ class NginxStats:
 
 
 def main():
-    nginxStats = NginxStats()
-    statsData = nginxStats.stats()
+    statsData = NginxStats().stats()
     return statsData
 
 
 if __name__ == '__main__':
     proc = commands.getoutput(''' ps -ef|grep 'nginx-monitor.py'|grep -v grep|wc -l ''')
     if int(proc) < 3:
-        req = urllib2.Request(falcon_client)
-        req.add_header('Content-Type','application/json')
-        data = json.dumps(main())
-        response = urllib2.urlopen(req, json.dumps(data))
+        r = requests.post("http://127.0.0.1:1988/v1/push", data=json.dumps(main()))
+        print r.text
