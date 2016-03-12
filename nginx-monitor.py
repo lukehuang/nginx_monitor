@@ -46,7 +46,7 @@ class NginxStats:
                 data.append({
                     'metric': self.metric % counterKey,
                     'endpoint': self.ip,
-                    'tags': 'program=nginx,key=%s' % counterKey,
+                    'tags': '',
                     'timestamp': self.timestamp,
                     'step': self.step,
                     'value': connections.get(key, 0),
@@ -61,7 +61,7 @@ class NginxStats:
                 data.append({
                     'metric': self.metric % counterKey,
                     'endpoint': self.ip,
-                    'tags': 'program=nginx,key=%s' % counterKey,
+                    'tags': '',
                     'timestamp': self.timestamp,
                     'step': self.step,
                     'value': int(requests[key]),
@@ -76,6 +76,9 @@ class NginxStats:
         groupData = jsonDecode[groupName]
         keys = { 'upstream_resp_time_sum':[], 'status':['5xx', '4xx', '3xx', '2xx', '1xx'],
                      'upstream_requests_total':[],'request_times':['0-100', '100-500', '500-1000', '1000-inf'],'requests_total':[] }
+        requestsTotal = 0
+        if groupData.has_key('requests_total'):
+            requestsTotal = float(groupData['requests_total'])
         for (k,v) in keys.items():
             if len(v) == 0:
                 counterKey = '%s.%s' % (groupName, k)
@@ -85,7 +88,7 @@ class NginxStats:
                 data.append({
                     'metric': self.metric % counterKey,
                     'endpoint': self.ip,
-                    'tags': 'program=nginx,key=%s' % counterKey,
+                    'tags': '',
                     'timestamp': self.timestamp,
                     'step': self.step,
                     'value': value,
@@ -96,10 +99,12 @@ class NginxStats:
                     counterKey = '%s.%s.%s' % (groupName, k, ko)
                     if groupData.has_key(k) and groupData[k].has_key(ko):
                         value = float(groupData[k][ko])
+                        if (k == 'status' or k == 'request_times') and requestsTotal > 0:
+                            value = (value/requestsTotal) * 100
                         data.append({
                             'metric': self.metric % counterKey,
                             'endpoint': self.ip,
-                            'tags': 'program=nginx,key=%s' % counterKey,
+                            'tags': '',
                             'timestamp': self.timestamp,
                             'step': self.step,
                             'value': value,
@@ -108,12 +113,9 @@ class NginxStats:
         return data
 
 
-
-
 def main():
     statsData = NginxStats().stats()
     return statsData
-
 
 if __name__ == '__main__':
     proc = commands.getoutput(''' ps -ef|grep 'nginx-monitor.py'|grep -v grep|wc -l ''')
